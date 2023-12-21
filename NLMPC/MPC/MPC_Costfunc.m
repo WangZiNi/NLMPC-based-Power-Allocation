@@ -1,38 +1,38 @@
 function J = MPC_Costfunc(X,U,e,data,Ts)
-% MPC的代价函数
-% 电池老化模型参数
-Price_bat = 1050;       % [RMB/kWh] 电池价格
-Price_ele = 0.6;        % [RMB/kWh] 用电价格
-Degrad_bat = 0.2;       % 电池容量衰减限制
-T_bat = 273+25;         % [K] 绝对温度
-Ea = 15162;             % [J] 活化能 from Arrhenius law
-B = 1516;               %  C_rate补偿因子
-R = 8.314;              % [J/(mol*K)] 气体常数
-A = 0.0032;             % 指数因子
-z = 0.824;              % 时间因子
-Rbat = 0.09375;       % [Ohm] 电池内阻
-Rsc = 0.01467;        % [Ohm] 超级电容内阻U
-Vmax=297;       %[V]  超级电容组最大电压
-Voc=400;        %[V]  电池组开路电压
-QB = 120;            % [Ah] 电池容量
+% cost function definition
+% battery degradation parameters
+Price_bat = 1050;       % [RMB/kWh] battery price
+Price_ele = 0.6;        % [RMB/kWh] electricity price
+Degrad_bat = 0.2;       % 
+T_bat = 273+25;         % [K] 
+Ea = 15162;             % [J] 
+B = 1516;               %  
+R = 8.314;              % [J/(mol*K)] 
+A = 0.0032;             % 
+z = 0.824;              % 
+Rbat = 0.09375;       % [Ohm] resistance
+Rsc = 0.01467;        % [Ohm] resistance
+Vmax=297;       %[V]  maximum voltage of SCs
+Voc=400;        %[V]  OCV of batteries
+QB = 120;            % [Ah] capacity of batteries
 % Vscref=data.References;
 p = data.PredictionHorizon;
-% MD负载功率可测扰动
+% MD -- power demand
 U1 = U(1:p,data.MDIndex(1));
-%超级电容的总功率
+% total power of SCs
 U2 = U(1:p,data.MVIndex(1));
 %X1 = X(2:p+1,1);
-%超级电容电压
+% voltage of SCs
 Vuc_t=X(1:p,2);
 Vsc_end=X(p+1,2);
 % Vscmin=0.7*Vmax;
 % Vscmax=0.8*Vmax;
-%超级电容的电流
+% current of SCs
 Isc2=(U2*1000)./Vuc_t;
-%超级电容实际输出功率
+%output power of SCs
 Pscout= (U2*1000)-Isc2.^2*Rsc;
 
-%222 锂电池实际输出功率
+% define DC/DC efficiency as a function of Vsc and Isc
 %     Vsc_vector =linspace(130,285,20);
 %     Isc_vector =[-800.00 	-789.87 	-779.75 	-769.62 	-759.49 	-749.37 	-739.24 	-729.11 	-718.99 	-708.86 	-698.74 	-688.61 	-678.48 	-668.36 	-658.23 	-648.10 	-637.98 	-627.85 	-617.72 	-607.60 	-597.47 	-587.34 	-577.22 	-567.09 	-556.97 	-546.84 	-536.71 	-526.59 	-516.46 	-506.33 	-496.21 	-486.08 	-475.95 	-465.83 	-455.70 	-445.57 	-435.45 	-425.32 	-415.19 	-405.07 	-394.94 	-384.82 	-374.69 	-364.56 	-354.44 	-344.31 	-334.18 	-324.06 	-313.93 	-303.80 	-293.68 	-283.55 	-273.42 	-263.30 	-253.17 	-243.04 	-232.92 	-222.79 	-212.67 	-202.54 	-192.41 	-182.29 	-172.16 	-162.03 	-151.91 	-141.78 	-131.65 	-121.53 	-111.40 	-101.27 	-91.15 	-81.02 	-70.90 	-60.77 	-50.64 	-40.52 	-30.39 	-20.26 	-10.14 	0 	10.14 	20.26 	30.39 	40.52 	50.64 	60.77 	70.90 	81.02 	91.15 	101.27 	111.40 	121.53 	131.65 	141.78 	151.91 	162.03 	172.16 	182.29 	192.41 	202.54 	212.67 	222.79 	232.92 	243.04 	253.17 	263.30 	273.42 	283.55 	293.68 	303.80 	313.93 	324.06 	334.18 	344.31 	354.44 	364.56 	374.69 	384.82 	394.94 	405.07 	415.19 	425.32 	435.45 	445.57 	455.70 	465.83 	475.95 	486.08 	496.21 	506.33 	516.46 	526.59 	536.71 	546.84 	556.97 	567.09 	577.22 	587.34 	597.47 	607.60 	617.72 	627.85 	637.98 	648.10 	658.23 	668.36 	678.48 	688.61 	698.74 	708.86 	718.99 	729.11 	739.24 	749.37 	759.49 	769.62 	779.75 	789.87 	800.00];           
 %      eta_dcdc = [0.77 	0.77 	0.78 	0.78 	0.78 	0.78 	0.78 	0.79 	0.79 	0.79 	0.79 	0.80 	0.80 	0.80 	0.80 	0.80 	0.81 	0.81 	0.81 	0.81 	0.82 	0.82 	0.82 	0.82 	0.83 	0.83 	0.83 	0.83 	0.83 	0.84 	0.84 	0.84 	0.84 	0.85 	0.85 	0.85 	0.86 	0.86 	0.86 	0.86 	0.87 	0.87 	0.87 	0.87 	0.88 	0.88 	0.88 	0.89 	0.89 	0.89 	0.89 	0.90 	0.90 	0.90 	0.91 	0.91 	0.91 	0.92 	0.92 	0.92 	0.92 	0.93 	0.93 	0.93 	0.94 	0.94 	0.94 	0.95 	0.95 	0.95 	0.96 	0.96 	0.96 	0.97 	0.97 	0.97 	0.97 	0.97 	0.95 	 	0.90 	0.96 	0.97 	0.97 	0.97 	0.97 	0.97 	0.96 	0.96 	0.96 	0.95 	0.95 	0.94 	0.94 	0.94 	0.93 	0.93 	0.92 	0.92 	0.92 	0.91 	0.91 	0.90 	0.90 	0.90 	0.89 	0.89 	0.88 	0.88 	0.87 	0.87 	0.87 	0.86 	0.86 	0.85 	0.85 	0.84 	0.84 	0.83 	0.83 	0.83 	0.82 	0.82 	0.81 	0.81 	0.80 	0.80 	0.79 	0.79 	0.79 	0.78 	0.78 	0.77 	0.77 	0.76 	0.76 	0.75 	0.75 	0.74 	0.74 	0.73 	0.73 	0.72 	0.72 	0.72 	0.71 	0.71 	0.70 	0.70 	0.69 	0.69 	0.68 	0.68 	0.67 	0.67 	0.66 	0.66 	0.65 	0.65 	0.64 
@@ -65,22 +65,24 @@ Pscout= (U2*1000)-Isc2.^2*Rsc;
 %     Pbatout2 = U1-Pscout2./DCeff2;
 %     k=find(Pscout2>0); 
 %     Pbatout2(k) = U1(k)-Pscout2(k).*DCeff2(k);
+
+%% use constant DC/DC efficiency
 DCeff=0.95;
 Pbatout = U1-Pscout./DCeff;     
 k=find(Pscout>0);
 Pbatout(k) = U1(k)-Pscout(k).*DCeff; 
 
-%电池的电流
+%current of batteries
 Ibat=real((Voc-sqrt(Voc^2-4*Rbat*Pbatout))/(2*Rbat));
 
         elecost= Price_ele*(Pscout+Pbatout)*Ts/(3600*1000);
         Ah = abs(Ibat)*Ts/(3600);
-
-        Crate_grid1 = abs(Ibat)/(QB);       %每个电池单体当前时刻充放电倍率
-        Crate_grid2 = abs(Ibat)/(QB*0.95);       %每个电池单体当前时刻充放电倍率
-        Crate_grid3 = abs(Ibat)/(QB*0.90);       %每个电池单体当前时刻充放电倍率
-        Crate_grid4 = abs(Ibat)/(QB*0.85);       %每个电池单体当前时刻充放电倍率
-        Crate_grid5 = abs(Ibat)/(QB*0.80);       %每个电池单体当前时刻充放电倍率
+       % (dis)charge rate of each battery cell at different degradation level
+        Crate_grid1 = abs(Ibat)/(QB);       
+        Crate_grid2 = abs(Ibat)/(QB*0.95);       
+        Crate_grid3 = abs(Ibat)/(QB*0.90);       
+        Crate_grid4 = abs(Ibat)/(QB*0.85);       
+        Crate_grid5 = abs(Ibat)/(QB*0.80);      
         deltaQloss_grid1 = Ah .* z*A^(1/z) .* exp((-Ea+B*Crate_grid1)/(z*R*T_bat)) * (0.0001)^((z-1)/z);  
         deltaQloss_grid2 = Ah .* z*A^(1/z) .* exp((-Ea+B*Crate_grid2)/(z*R*T_bat)) * (0.05)^((z-1)/z);
         deltaQloss_grid3 = Ah .* z*A^(1/z) .* exp((-Ea+B*Crate_grid3)/(z*R*T_bat)) * (0.10)^((z-1)/z);
